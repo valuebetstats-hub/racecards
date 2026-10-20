@@ -38,6 +38,21 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .verdict.good{background:var(--good-wash);border-color:var(--good)} .verdict.good b{color:var(--good)}
 .verdict.warn{background:var(--warn-wash);border-color:var(--warn)} .verdict.warn b{color:var(--warn)}
 .verdict.bad{background:var(--bad-wash);border-color:var(--bad)} .verdict.bad b{color:var(--bad)}
+.srb{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:14px 16px;margin:0 0 14px}
+.srb .t{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.srb .row{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.srb .big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.srb .lab{font-size:12.5px;color:var(--text-2)}
+.srb .mid{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.track{position:relative;height:34px;margin:14px 4px 22px}
+.track .base{position:absolute;left:0;right:0;top:15px;height:4px;background:var(--axis);border-radius:2px}
+.track .band{position:absolute;top:9px;height:16px;background:#3a3935;border:1px solid #5a5955;border-radius:4px}
+.track .tick{position:absolute;top:5px;width:2px;height:24px;background:var(--text-2)}
+.track .be{position:absolute;top:3px;width:0;height:28px;border-left:2px dashed var(--warn)}
+.track .dot{position:absolute;top:8px;width:18px;height:18px;margin-left:-9px;border-radius:50%;border:3px solid var(--page)}
+.track .tl{position:absolute;top:32px;font-size:11.5px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.keyrow{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.keyrow i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
 .stat{background:var(--sunk);border:1px solid var(--grid);border-radius:10px;padding:10px 12px}
 .stat .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -226,13 +241,13 @@ function verdict(a,side){
  const better=side==="back"?"won":"lost";
  if(a.n<30) return ["warn","Too few bets to tell","With "+a.n+" bets almost any result can happen by luck. Keep recording."];
  if(a.pl<=0 && a.pLo<0.05) return ["bad","Worse than random betting",
-  "Random bets at your odds did this badly only "+pct(a.pLo,1)+" of the time. If your odds are bookmaker prices, the margin may be the reason; at Betfair SP it's a sign the selections are worse than the price."];
+  "Random bets at your odds did this badly only "+(a.pLo>0?pct(a.pLo,2)+" of the time":"in none of "+a.sims.toLocaleString()+" replays")+". If your odds are bookmaker prices, the margin may be the reason; at Betfair SP it's a sign the selections are worse than the price."];
  if(a.pHi<0.01){
   const lot=a.k>0 && a.plNoTop<=0;
   return lot?["warn","Unusual, but it rests on a few big results",
-   "Luck alone did this well only "+pct(a.pHi,1)+" of the time, but without your "+a.k+" biggest results you're at "+fmtE(a.plNoTop)+". Long shots can do that. Keep testing on new bets."]
+   "Luck alone did this well only "+(a.pHi>0?pct(a.pHi,2):"rarely ("+"none of "+a.sims.toLocaleString()+" replays)")+" of the time, but without your "+a.k+" biggest results you're at "+fmtE(a.plNoTop)+". Long shots can do that. Keep testing on new bets."]
    :["good","Very unlikely to be luck",
-   "Random betting at your odds did this well only "+pct(a.pHi,1)+" of the time (about 1 in "+Math.round(1/Math.max(a.pHi,1/a.sims))+"). The next test is new bets, placed after the rule was fixed."];
+   "Random betting at your odds did this well "+(a.pHi>0?"only "+pct(a.pHi,2)+" of the time (about 1 in "+Math.round(1/a.pHi).toLocaleString()+")":"in none of "+a.sims.toLocaleString()+" replays (rarer than 1 in "+a.sims.toLocaleString()+")")+". The next test is new bets, placed after the rule was fixed."];
  }
  if(a.pHi<0.05) return ["warn","Probably not luck, but not proven",
   "Luck did this well "+pct(a.pHi,1)+" of the time. That's about 1 in "+Math.round(1/a.pHi)+". If you tried several systems before this one, one of them doing this well is expected."];
@@ -252,15 +267,41 @@ function render(el,a,side,c,single){
   const o=single?single:(a.n?a.staked/a.n:NaN); // not used for lay
   if(single) be=pct((1-c)/((single-1)+(1-c)));
  }
+ const srLo=lowW/a.n, srHi=hiW/a.n, srExp=a.E/a.n;
+ let beNum=NaN;
+ if(side==="back"){const o=single?single:a.avgWinOdds; if(isFinite(o)) beNum=1/(1+(o-1)*(1-c));}
+ else if(single) beNum=(1-c)/((single-1)+(1-c));
+ const inBand=sr>=srLo&&sr<=srHi;
+ const goodDir=side==="back"?sr>srHi:sr<srLo;
+ const dotCol=inBand?"var(--warn)":(goodDir?"var(--good)":"var(--bad)");
+ const top=Math.max(srHi,sr,isFinite(beNum)?beNum:0)*1.2||0.1;
+ const X=v=>Math.max(0,Math.min(100,v/top*100));
+ const srBanner=`<div class="srb"><div class="t">Strike rate vs luck</div>
+  <div class="row">
+   <div><div class="big" style="color:${dotCol}">${pct(sr)}</div><div class="lab">your strike rate (${a.W} of ${a.n})</div></div>
+   <div><div class="mid">${pct(srExp)}</div><div class="lab">what luck expects</div></div>
+   <div><div class="mid">${pct(srLo)}–${pct(srHi)}</div><div class="lab">luck range (95%)</div></div>
+   ${isFinite(beNum)?`<div><div class="mid" style="color:var(--warn)">${pct(beNum)}</div><div class="lab">${side==="back"?"needed to break even":"most winners you can afford"}</div></div>`:""}
+  </div>
+  <div class="track" aria-hidden="true"><div class="base"></div>
+   <div class="band" style="left:${X(srLo)}%;width:${Math.max(0.5,X(srHi)-X(srLo))}%"></div>
+   <div class="tick" style="left:${X(srExp)}%"></div>
+   ${isFinite(beNum)?`<div class="be" style="left:${X(beNum)}%"></div>`:""}
+   <div class="dot" style="left:${X(sr)}%;background:${dotCol}"></div>
+   <div class="tl" style="left:0%;transform:none">0%</div><div class="tl" style="left:100%;transform:translateX(-100%)">${pct(top,0)}</div>
+  </div>
+  <div class="keyrow"><span><i style="background:#3a3935;border:1px solid #5a5955"></i>Luck range</span><span><i style="background:var(--text-2);width:3px"></i>Luck expects</span>${isFinite(beNum)?`<span><i style="border-left:2px dashed var(--warn);width:2px;border-radius:0"></i>Break even</span>`:""}<span><i style="background:${dotCol};border-radius:50%;width:10px"></i>You</span></div>
+  <p class="hint" style="margin-top:8px">${inBand?"Inside the luck range: a strike rate like this happens by chance.":(goodDir?"Outside the luck range, on the good side"+(side==="lay"?" (fewer winners than the price said)":"")+".":"Outside the luck range, on the bad side"+(side==="lay"?" (more winners than the price said)":"")+".")}${side==="lay"?" For lays, lower is better.":""}${isFinite(beNum)&&side==="back"&&!single?" Break even uses your winners' average odds.":""}</p>
+ </div>`;
  const html=`
  <div class="verdict ${cls}"><b>${head}</b>${body}</div>
+ ${srBanner}
  <div class="stats">
   <div class="stat"><div class="k">Profit</div><div class="v ${a.pl>=0?"pos":"neg"}">${fmtE(a.pl)}</div><div class="s">${fmtP(a.roi)} of ${side==="back"?"stakes":"liability"}</div></div>
   <div class="stat"><div class="k">Winners</div><div class="v">${a.W} of ${a.n}</div><div class="s">strike rate ${pct(sr)}</div></div>
   <div class="stat"><div class="k">Price expected</div><div class="v">${a.E.toFixed(1)}</div><div class="s">winners · luck range ${lowW.toFixed(0)}–${hiW.toFixed(0)}</div></div>
   <div class="stat"><div class="k">A/E</div><div class="v">${ae.toFixed(2)}</div><div class="s">${side==="back"?"above 1 = more winners than the price said":"below 1 = fewer winners than the price said"}</div></div>
-  ${be?`<div class="stat"><div class="k">Break-even strike rate</div><div class="v">${be}</div><div class="s">${side==="back"?(single?"at these odds":"at your winners' average odds ("+a.avgWinOdds.toFixed(2)+")"):"winners you can afford at these odds"}</div></div>`:""}
-  <div class="stat"><div class="k">Luck did as well</div><div class="v">${pct(a.pHi,1)}</div><div class="s">of ${a.sims.toLocaleString()} random replays</div></div>
+  <div class="stat"><div class="k">Luck did as well</div><div class="v">${a.pHi>0?pct(a.pHi,a.pHi<0.01?2:1):"&lt; "+pct(1/a.sims,2)}</div><div class="s">of ${a.sims.toLocaleString()} random replays</div></div>
   ${!single&&a.k?`<div class="stat"><div class="k">Without top ${a.k} results</div><div class="v ${a.plNoTop>=0?"pos":"neg"}">${fmtE(a.plNoTop)}</div><div class="s">${isFinite(a.roiNoTop)?fmtP(a.roiNoTop):""}</div></div>`:""}
  </div>
  <div class="card"><h2>What luck looks like at your odds</h2>
@@ -289,10 +330,10 @@ function drawHist(cv,a){
  vline(X(0),col("--text-2"),1.2,[4,3]);
  vline(X(a.pl),col("--accent"),3);
  g.fillStyle=col("--muted");g.font="12px system-ui,sans-serif";g.textBaseline="top";
- g.textAlign="left";g.fillText(fmtE(lo+pad*0),L,T+ph+8);
- g.textAlign="right";g.fillText(fmtE(hi),W-R,T+ph+8);
- g.textAlign="center";g.fillStyle=col("--text-1");
- const xl=Math.min(Math.max(X(a.pl),40),W-40); g.fillText("you",xl,T+ph+8);
+ const xl=Math.min(Math.max(X(a.pl),40),W-40);
+ if(xl-L>110){g.textAlign="left";g.fillText(fmtE(lo),L,T+ph+8);}
+ if(W-R-xl>110){g.textAlign="right";g.fillText(fmtE(hi),W-R,T+ph+8);}
+ g.textAlign="center";g.fillStyle=col("--text-1"); g.fillText("you",xl,T+ph+8);
 }
 
 /* ---------- quick ---------- */
