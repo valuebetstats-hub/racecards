@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luck checker · EdgeFinder</title>
+<meta name="description" content="Is a betting record skill or luck? Enter your odds and results and see how often random betting would do as well.">
+<script data-goatcounter="https://valuebetstats.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<style>
+:root{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--sunk:#232321;--text-1:#fff;--text-2:#c3c2b7;
+ --muted:#898781;--grid:#2c2c2a;--axis:#383835;--good:#3fbf3f;--good-wash:#16301a;--bad:#e66767;--bad-wash:#33191a;
+ --warn:#e0a040;--warn-wash:#33281a;--accent:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text-1);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 56px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--text-2);margin:0 0 14px}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+a.lnk{font-size:13px;color:var(--text-1);text-decoration:none;border:1px solid var(--axis);border-radius:7px;padding:5px 10px;background:var(--surface)}
+a.lnk:hover{border-color:var(--text-2)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.tabs button{font:inherit;font-size:14px;color:var(--text-2);background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:7px 12px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:16px;margin:0 0 14px}
+.card h2{font-size:16px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:block;font-size:12.5px;color:var(--text-2);margin-bottom:4px}
+input,select,textarea{font:inherit;font-size:15px;color:var(--text-1);background:var(--sunk);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:150px;font-family:ui-monospace,Consolas,monospace;font-size:13.5px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chips button{font:inherit;font-size:12.5px;color:var(--text-1);background:var(--sunk);border:1px solid var(--axis);border-radius:999px;padding:3px 10px;cursor:pointer}
+.chips button.on{border-color:var(--accent);background:#17263a}
+.hint{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+.seg{display:inline-flex;border:1px solid var(--axis);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;color:var(--text-2);background:var(--sunk);border:0;padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.verdict{border-radius:12px;padding:14px 16px;margin:0 0 14px;border:1px solid var(--axis)}
+.verdict b{display:block;font-size:19px;margin-bottom:3px}
+.verdict.good{background:var(--good-wash);border-color:var(--good)} .verdict.good b{color:var(--good)}
+.verdict.warn{background:var(--warn-wash);border-color:var(--warn)} .verdict.warn b{color:var(--warn)}
+.verdict.bad{background:var(--bad-wash);border-color:var(--bad)} .verdict.bad b{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
+.stat{background:var(--sunk);border:1px solid var(--grid);border-radius:10px;padding:10px 12px}
+.stat .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12.5px;color:var(--text-2)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+canvas{width:100%;height:220px;display:block}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--text-2);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--grid);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--text-2);font-weight:600;font-size:12.5px}
+.err{color:var(--bad);font-size:13px;margin-top:6px}
+details{margin-top:6px} summary{cursor:pointer;color:var(--text-2)}
+.foot{color:var(--muted);font-size:12.5px;margin-top:22px}
+.hide{display:none}
+</style></head>
+<body><div class="wrap">
+<h1>Luck checker</h1>
+<p class="sub">Winning or losing, is it skill or luck? Enter your bets and see how often random betting at the same odds would have done as well.</p>
+<div class="links"><a class="lnk" href="index.html">Today's card</a><a class="lnk" href="archive.html">Previous days</a></div>
+
+<div class="tabs" role="tablist">
+ <button role="tab" aria-selected="true" data-tab="quick">Quick check</button>
+ <button role="tab" aria-selected="false" data-tab="paste">Paste your bets</button>
+ <button role="tab" aria-selected="false" data-tab="plan">How many bets do I need?</button>
+</div>
+
+<!-- QUICK -->
+<section id="tab-quick">
+<div class="card">
+ <h2>Your record</h2>
+ <div class="grid">
+  <div><label>Back or lay</label><div class="seg" id="q-side"><button aria-pressed="true" data-v="back">Back</button><button aria-pressed="false" data-v="lay">Lay</button></div></div>
+  <div><label for="q-odds">Average odds (decimal, or 7/2)</label><input id="q-odds" value="5.0" inputmode="decimal"></div>
+  <div><label for="q-n">Number of bets</label><input id="q-n" type="number" min="1" value="200"></div>
+  <div><label for="q-w">Winners (horses that won)</label><input id="q-w" type="number" min="0" value="45"></div>
+  <div><label for="q-c">Commission</label><select id="q-c"><option value="0">0% (bookmaker)</option><option value="0.02" selected>2%</option><option value="0.05">5% (Betfair standard)</option><option value="0.08">8%</option></select></div>
+  <div><label for="q-stake">Stake per bet (€)</label><input id="q-stake" type="number" min="0.01" step="0.5" value="1"></div>
+ </div>
+ <div class="chips" id="q-chips"></div>
+ <p class="hint">Uses the same odds for every bet. If your odds vary a lot, use <b>Paste your bets</b> for an exact answer.</p>
+ <div class="err" id="q-err"></div>
+</div>
+<div id="q-out"></div>
+</section>
+
+<!-- PASTE -->
+<section id="tab-paste" class="hide">
+<div class="card">
+ <h2>Your bets</h2>
+ <div class="grid">
+  <div><label>Back or lay</label><div class="seg" id="p-side"><button aria-pressed="true" data-v="back">Back</button><button aria-pressed="false" data-v="lay">Lay</button></div></div>
+  <div><label for="p-c">Commission</label><select id="p-c"><option value="0">0% (bookmaker)</option><option value="0.02" selected>2%</option><option value="0.05">5% (Betfair standard)</option><option value="0.08">8%</option></select></div>
+ </div>
+ <label for="p-text" style="margin-top:12px">One bet per line: odds, result (W or L), and an optional stake. Commas, spaces or tabs all work, so you can paste from a spreadsheet.</label>
+ <textarea id="p-text" spellcheck="false">4.5 W
+6.0 L
+3.2 L
+8.0 L
+5.5 W
+11 L
+4.0 L
+7/2 L
+9/2 W
+6.5 L</textarea>
+ <p class="hint">Odds can be decimal (4.5) or fractional (7/2). Results: W, won, 1 = winner; anything else = loser. A placed horse is a loser for a win bet.</p>
+ <div class="err" id="p-err"></div>
+</div>
+<div id="p-out"></div>
+</section>
+
+<!-- PLAN -->
+<section id="tab-plan" class="hide">
+<div class="card">
+ <h2>How many bets before a result means anything?</h2>
+ <div class="grid">
+  <div><label for="n-odds">Typical odds</label><input id="n-odds" value="5.0" inputmode="decimal"></div>
+  <div><label for="n-edge">The edge you think you have (% more winners than the price says)</label><input id="n-edge" type="number" step="0.5" value="5"></div>
+  <div><label for="n-c">Commission</label><select id="n-c"><option value="0">0%</option><option value="0.02" selected>2%</option><option value="0.05">5%</option></select></div>
+  <div><label for="n-conf">How sure</label><select id="n-conf"><option value="1.645">90%</option><option value="1.96" selected>95%</option><option value="2.576">99%</option></select></div>
+ </div>
+ <div class="chips" id="n-chips"></div>
+ <div class="err" id="n-err"></div>
+</div>
+<div id="n-out"></div>
+</section>
+
+<div class="card">
+ <h2>How it works</h2>
+ <p style="margin:0 0 8px">A price is a forecast. At decimal odds of 5.0 the market says a horse wins 1 time in 5, and on Betfair that forecast is close to spot on. So we can ask: <b>if your bets had no edge at all, how would they have done?</b></p>
+ <p style="margin:0 0 8px">The checker replays your exact bets thousands of times, letting each horse win with the chance its price gave it, and records the profit each time. That's what pure luck looks like at your odds. Then it counts how often luck did as well as you.</p>
+ <details><summary>The maths</summary>
+  <p class="hint" style="color:var(--text-2)">Chance from the price: p = 1 ÷ odds. Expected winners E = sum of p. Luck spread SD = √(sum of p × (1 − p)). The 95% luck range of winners is E ± 1.96 × SD. A/E = your winners ÷ E. Back profit per winner = (odds − 1) × stake × (1 − commission); a loser costs the stake. Break-even strike rate at one price = 1 ÷ (1 + (odds − 1) × (1 − commission)). Bookmaker prices carry a margin, so 1 ÷ odds slightly overstates the true chance and the check is a little kind to you. Betfair SP is the fairest test.</p>
+ </details>
+</div>
+<p class="foot">From EdgeFinder (@valuebetstats). A tool for checking records, not advice. 18+ · BeGambleAware.org</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const fmtE=v=>(v<0?"−€":"+€")+Math.abs(v).toFixed(2);
+const fmtP=(v,d=1)=>(v<0?"−":"+")+Math.abs(v*100).toFixed(d)+"%";
+const pct=(v,d=1)=>(v*100).toFixed(d)+"%";
+const PRESETS=[["Evens",2],["6/4",2.5],["2/1",3],["5/2",3.5],["3/1",4],["7/2",4.5],["4/1",5],["5/1",6],["7/1",8],["10/1",11],["20/1",21]];
+
+function parseOdds(s){
+ s=String(s).trim().toLowerCase();
+ if(!s) return NaN;
+ if(s==="evs"||s==="evens"||s==="ev") return 2;
+ const f=s.match(/^(\d+(?:\.\d+)?)\s*[\/-]\s*(\d+(?:\.\d+)?)$/);
+ if(f){const a=+f[1],b=+f[2]; return b>0?1+a/b:NaN;}
+ const d=parseFloat(s.replace(",","."));
+ return d;
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+ document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+ ["quick","paste","plan"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
+ try{localStorage.setItem("luck-tab",b.dataset.tab)}catch(e){}
+ run();
+}));
+function seg(id){
+ const el=$(id);
+ el.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+  el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b)); run();}));
+ return ()=>el.querySelector('[aria-pressed="true"]').dataset.v;
+}
+const qSide=seg("q-side"), pSide=seg("p-side");
+function chips(id,input){
+ const el=$(id);
+ PRESETS.forEach(([l,o])=>{const b=document.createElement("button");b.type="button";b.textContent=l+" ("+o.toFixed(1)+")";
+  b.addEventListener("click",()=>{input.value=o.toFixed(1);run();});el.appendChild(b);});
+ const mark=()=>{const v=parseOdds(input.value);el.querySelectorAll("button").forEach((b,i)=>b.classList.toggle("on",Math.abs(PRESETS[i][1]-v)<1e-9));};
+ input.addEventListener("input",mark); return mark;
+}
+const markQ=chips("q-chips",$("q-odds")), markN=chips("n-chips",$("n-odds"));
+
+/* ---------- engine ---------- */
+function plOf(side,odds,stake,c,won){
+ return side==="back" ? (won? stake*(odds-1)*(1-c) : -stake)
+                      : (won? -stake*(odds-1) : stake*(1-c));
+}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* bets: [{odds,stake,won}] ; returns analysis */
+function analyse(bets,side,c){
+ const n=bets.length;
+ let W=0,E=0,V=0,pl=0,staked=0,mean=0,varPL=0,winOddsSum=0;
+ const wp=[],lp=[],ps=[];
+ for(const b of bets){
+  const p=1/b.odds, w=plOf(side,b.odds,b.stake,c,true), l=plOf(side,b.odds,b.stake,c,false);
+  ps.push(p);wp.push(w);lp.push(l);
+  E+=p;V+=p*(1-p);W+=b.won?1:0;if(b.won)winOddsSum+=b.odds;
+  pl+=b.won?w:l; staked+=side==="back"?b.stake:b.stake*(b.odds-1);
+  mean+=p*w+(1-p)*l; varPL+=p*(1-p)*(w-l)*(w-l);
+ }
+ // simulation
+ const budget=2.5e7; let sims=Math.max(1000,Math.min(10000,Math.floor(budget/Math.max(n,1))));
+ const exact=n*sims<=budget*1.01;
+ const res=new Float64Array(sims);
+ if(exact){
+  for(let s=0;s<sims;s++){let t=0;for(let i=0;i<n;i++)t+=Math.random()<ps[i]?wp[i]:lp[i];res[s]=t;}
+ }else{
+  const sd=Math.sqrt(varPL); for(let s=0;s<sims;s++)res[s]=mean+sd*gauss();
+ }
+ let ge=0,le=0; const eps=1e-9;
+ for(let s=0;s<sims;s++){if(res[s]>=pl-eps)ge++;if(res[s]<=pl+eps)le++;}
+ const sorted=Float64Array.from(res).sort();
+ const q=f=>sorted[Math.min(sims-1,Math.max(0,Math.floor(f*sims)))];
+ // top-5 removal (winners for back, losers-that-won for lay = biggest P/L contributions)
+ const contrib=bets.map((b,i)=>b.won?wp[i]:lp[i]).sort((a,b)=>b-a);
+ const k=Math.min(5,contrib.filter(x=>x>0).length);
+ const plNoTop=pl-contrib.slice(0,k).reduce((a,b)=>a+b,0);
+ const stakedNoTop=staked*(n-k)/Math.max(n,1);
+ return {n,W,E,SD:Math.sqrt(V),pl,staked,roi:pl/staked,mean,sims,exact,res,
+  pHi:ge/sims,pLo:le/sims,lo95:q(.025),hi95:q(.975),
+  avgWinOdds:W?winOddsSum/W:NaN, k,plNoTop,roiNoTop:stakedNoTop>0?plNoTop/stakedNoTop:NaN};
+}
+
+/* ---------- rendering ---------- */
+function verdict(a,side){
+ const better=side==="back"?"won":"lost";
+ if(a.n<30) return ["warn","Too few bets to tell","With "+a.n+" bets almost any result can happen by luck. Keep recording."];
+ if(a.pl<=0 && a.pLo<0.05) return ["bad","Worse than random betting",
+  "Random bets at your odds did this badly only "+pct(a.pLo,1)+" of the time. If your odds are bookmaker prices, the margin may be the reason; at Betfair SP it's a sign the selections are worse than the price."];
+ if(a.pHi<0.01){
+  const lot=a.k>0 && a.plNoTop<=0;
+  return lot?["warn","Unusual, but it rests on a few big results",
+   "Luck alone did this well only "+pct(a.pHi,1)+" of the time, but without your "+a.k+" biggest results you're at "+fmtE(a.plNoTop)+". Long shots can do that. Keep testing on new bets."]
+   :["good","Very unlikely to be luck",
+   "Random betting at your odds did this well only "+pct(a.pHi,1)+" of the time (about 1 in "+Math.round(1/Math.max(a.pHi,1/a.sims))+"). The next test is new bets, placed after the rule was fixed."];
+ }
+ if(a.pHi<0.05) return ["warn","Probably not luck, but not proven",
+  "Luck did this well "+pct(a.pHi,1)+" of the time. That's about 1 in "+Math.round(1/a.pHi)+". If you tried several systems before this one, one of them doing this well is expected."];
+ return ["warn","Luck could easily explain this",
+  "Random betting at your odds did as well as you "+pct(a.pHi,0)+" of the time. "+(a.pl>0?"Nice profit, but not yet evidence of an edge.":"No sign of an edge yet, and no sign of bad luck either.")];
+}
+function render(el,a,side,c,single){
+ const [cls,head,body]=verdict(a,side);
+ const sr=a.W/a.n;
+ const lowW=Math.max(0,a.E-1.96*a.SD), hiW=a.E+1.96*a.SD;
+ const ae=a.W/a.E;
+ let be="";
+ if(side==="back"){
+  const o=single?single:a.avgWinOdds;
+  if(isFinite(o)) be=pct(1/(1+(o-1)*(1-c)));
+ }else{
+  const o=single?single:(a.n?a.staked/a.n:NaN); // not used for lay
+  if(single) be=pct((1-c)/((single-1)+(1-c)));
+ }
+ const html=`
+ <div class="verdict ${cls}"><b>${head}</b>${body}</div>
+ <div class="stats">
+  <div class="stat"><div class="k">Profit</div><div class="v ${a.pl>=0?"pos":"neg"}">${fmtE(a.pl)}</div><div class="s">${fmtP(a.roi)} of ${side==="back"?"stakes":"liability"}</div></div>
+  <div class="stat"><div class="k">Winners</div><div class="v">${a.W} of ${a.n}</div><div class="s">strike rate ${pct(sr)}</div></div>
+  <div class="stat"><div class="k">Price expected</div><div class="v">${a.E.toFixed(1)}</div><div class="s">winners · luck range ${lowW.toFixed(0)}–${hiW.toFixed(0)}</div></div>
+  <div class="stat"><div class="k">A/E</div><div class="v">${ae.toFixed(2)}</div><div class="s">${side==="back"?"above 1 = more winners than the price said":"below 1 = fewer winners than the price said"}</div></div>
+  ${be?`<div class="stat"><div class="k">Break-even strike rate</div><div class="v">${be}</div><div class="s">${side==="back"?(single?"at these odds":"at your winners' average odds ("+a.avgWinOdds.toFixed(2)+")"):"winners you can afford at these odds"}</div></div>`:""}
+  <div class="stat"><div class="k">Luck did as well</div><div class="v">${pct(a.pHi,1)}</div><div class="s">of ${a.sims.toLocaleString()} random replays</div></div>
+  ${!single&&a.k?`<div class="stat"><div class="k">Without top ${a.k} results</div><div class="v ${a.plNoTop>=0?"pos":"neg"}">${fmtE(a.plNoTop)}</div><div class="s">${isFinite(a.roiNoTop)?fmtP(a.roiNoTop):""}</div></div>`:""}
+ </div>
+ <div class="card"><h2>What luck looks like at your odds</h2>
+  <canvas></canvas>
+  <div class="legend"><span><i style="background:#5a5955"></i>${a.sims.toLocaleString()} random replays of your bets</span><span><i style="background:var(--accent)"></i>You: ${fmtE(a.pl)}</span><span><i style="background:var(--text-2)"></i>Break even</span></div>
+  <p class="hint">95% of random replays finished between ${fmtE(a.lo95)} and ${fmtE(a.hi95)}. The average was ${fmtE(a.mean)}, which is what commission costs at fair prices.${a.exact?"":" (Large sample: replays use the normal approximation.)"}</p>
+ </div>`;
+ el.innerHTML=html;
+ drawHist(el.querySelector("canvas"),a);
+}
+function drawHist(cv,a){
+ const dpr=window.devicePixelRatio||1, W=cv.clientWidth||600, H=220;
+ cv.width=W*dpr; cv.height=H*dpr; const g=cv.getContext("2d"); g.scale(dpr,dpr);
+ const css=getComputedStyle(document.documentElement);
+ const col=v=>css.getPropertyValue(v).trim();
+ let lo=Math.min(a.lo95,a.pl,0), hi=Math.max(a.hi95,a.pl,0);
+ const pad=(hi-lo)*0.12||1; lo-=pad; hi+=pad;
+ const B=48, bins=new Array(B).fill(0), bw=(hi-lo)/B;
+ for(const v of a.res){const i=Math.floor((v-lo)/bw); if(i>=0&&i<B)bins[i]++;}
+ const mx=Math.max(...bins,1), L=8,R=8,T=10,Bt=28, pw=W-L-R, ph=H-T-Bt;
+ const X=v=>L+(v-lo)/(hi-lo)*pw;
+ g.fillStyle="#5a5955";
+ bins.forEach((c,i)=>{const h=c/mx*ph; g.fillRect(L+i*pw/B+1,T+ph-h,pw/B-2,h);});
+ g.strokeStyle=col("--axis");g.lineWidth=1;g.beginPath();g.moveTo(L,T+ph+.5);g.lineTo(W-R,T+ph+.5);g.stroke();
+ const vline=(x,c,w,dash)=>{g.save();g.strokeStyle=c;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();g.moveTo(x,T);g.lineTo(x,T+ph);g.stroke();g.restore();};
+ vline(X(0),col("--text-2"),1.2,[4,3]);
+ vline(X(a.pl),col("--accent"),3);
+ g.fillStyle=col("--muted");g.font="12px system-ui,sans-serif";g.textBaseline="top";
+ g.textAlign="left";g.fillText(fmtE(lo+pad*0),L,T+ph+8);
+ g.textAlign="right";g.fillText(fmtE(hi),W-R,T+ph+8);
+ g.textAlign="center";g.fillStyle=col("--text-1");
+ const xl=Math.min(Math.max(X(a.pl),40),W-40); g.fillText("you",xl,T+ph+8);
+}
+
+/* ---------- quick ---------- */
+function runQuick(){
+ markQ();
+ const side=qSide(), odds=parseOdds($("q-odds").value), n=Math.floor(+$("q-n").value), w=Math.floor(+$("q-w").value),
+  c=+$("q-c").value, stake=+$("q-stake").value||1;
+ let err="";
+ if(!(odds>1.01&&odds<1001)) err="Enter odds above 1.01, like 5.0 or 4/1.";
+ else if(!(n>=1&&n<=200000)) err="Enter between 1 and 200,000 bets.";
+ else if(!(w>=0&&w<=n)) err="Winners must be between 0 and the number of bets.";
+ $("q-err").textContent=err; if(err){$("q-out").innerHTML="";return;}
+ const bets=[]; for(let i=0;i<n;i++)bets.push({odds,stake,won:i<w});
+ render($("q-out"),analyse(bets,side,c),side,c,odds);
+}
+/* ---------- paste ---------- */
+function runPaste(){
+ const side=pSide(), c=+$("p-c").value, lines=$("p-text").value.split(/\r?\n/);
+ const bets=[], bad=[];
+ lines.forEach((ln,i)=>{
+  const t=ln.trim(); if(!t||/^odds/i.test(t)) return;
+  const parts=t.split(/[\s,;\t]+/).filter(Boolean);
+  const odds=parseOdds(parts[0]); const r=(parts[1]||"").toLowerCase();
+  const stake=parts[2]!==undefined?parseFloat(parts[2]):1;
+  if(!(odds>1.01&&odds<1001)||!(stake>0)){bad.push(i+1);return;}
+  bets.push({odds,stake,won:/^(w|won|win|1|y|yes)$/.test(r)});
+ });
+ $("p-err").textContent=bad.length?("Skipped line"+(bad.length>1?"s ":" ")+bad.slice(0,8).join(", ")+(bad.length>8?"…":"")+": couldn't read the odds."):"";
+ if(!bets.length){$("p-out").innerHTML="";return;}
+ render($("p-out"),analyse(bets,side,c),side,c,null);
+}
+/* ---------- plan ---------- */
+function runPlan(){
+ markN();
+ const O=parseOdds($("n-odds").value), e=(+$("n-edge").value)/100, c=+$("n-c").value, z=+$("n-conf").value;
+ if(!(O>1.01&&O<1001)){$("n-err").textContent="Enter odds above 1.01.";$("n-out").innerHTML="";return;}
+ $("n-err").textContent="";
+ const need=(o,edge)=>{const p=Math.min(0.999,(1+edge)/o), ev=p*(o-1)*(1-c)-(1-p), sd=Math.sqrt(p*(1-p))*((o-1)*(1-c)+1);
+  return ev<=0?null:{n:Math.ceil((z*sd/ev)**2),ev};};
+ const r=need(O,e);
+ const head=r?`<div class="verdict good"><b>About ${r.n.toLocaleString()} bets</b>At ${O.toFixed(2)} with ${(e*100).toFixed(1)}% more winners than the price says, you'd expect ${fmtP(r.ev)} per bet after commission. You need about ${r.n.toLocaleString()} bets before luck is unlikely to explain it.</div>`
+   :`<div class="verdict bad"><b>That edge doesn't beat commission</b>At ${O.toFixed(2)} you need more than about ${(((1/(1+(O-1)*(1-c)))*O-1)*100).toFixed(1)}% extra winners just to break even at ${(c*100).toFixed(0)}% commission.</div>`;
+ const odds=[2,3,4,5,8,11,21], edges=[0.03,0.05,0.10,0.20];
+ let t=`<div class="card"><h2>Bets needed (${(c*100).toFixed(0)}% commission)</h2><table><tr><th>Odds</th>${edges.map(x=>`<th>${(x*100).toFixed(0)}% edge</th>`).join("")}</tr>`;
+ odds.forEach(o=>{t+=`<tr><td>${o.toFixed(1)}</td>`+edges.map(x=>{const q=need(o,x);return `<td>${q?q.n.toLocaleString():"loses"}</td>`;}).join("")+"</tr>";});
+ t+=`</table><p class="hint">Edge = how many more winners than the price says (A/E 1.05 = 5%). Long shots need far more bets because a few winners swing the result.</p></div>`;
+ $("n-out").innerHTML=head+t;
+}
+
+let timer=null;
+function run(){clearTimeout(timer);timer=setTimeout(()=>{
+ const tab=document.querySelector('.tabs [aria-selected="true"]').dataset.tab;
+ if(tab==="quick")runQuick(); else if(tab==="paste")runPaste(); else runPlan();},120);}
+document.querySelectorAll("input,select,textarea").forEach(x=>x.addEventListener("input",run));
+window.addEventListener("resize",run);
+try{const t=localStorage.getItem("luck-tab"); if(t){const b=document.querySelector(`.tabs [data-tab="${t}"]`); if(b){b.click();}}}catch(e){}
+run();
+})();
+</script>
+</body></html>
